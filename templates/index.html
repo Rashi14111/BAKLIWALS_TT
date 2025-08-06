@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Timetable Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Fonts & Libraries -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+  <div class="dashboard-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <h2 class="logo">Dashboard</h2>
+      <nav class="nav-links">
+        <a href="#" class="nav-link active" data-target="welcome-block">Welcome</a>
+        <a href="#" class="nav-link" data-target="faculty-block">Faculty</a>
+        <a href="#" class="nav-link" data-target="courses-block">Courses</a>
+        <a href="#" class="nav-link" data-target="classroom-block">Classrooms</a>
+      </nav>
+      <button class="logout-btn" onclick="window.location.href='/logout';">Logout</button>
+
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="header">
+        <h1 class="main-title">Bakliwal Tutorials IIT</h1>
+        <h2>Admin Constraint Panel</h2>
+
+      </header>
+
+      <!-- Content Blocks -->
+      <section id="welcome-block" class="card content-block" style="display: block;">
+        <h2>👋 Welcome!</h2>
+        <p>Use the dashboard to manage faculty, courses, and classroom capacities.</p>
+      </section>
+
+      <section id="faculty-block" class="card content-block" style="display: none;">
+        <h2>Faculty Management</h2>
+        <form method="POST">
+          <input type="hidden" name="form" value="faculty">
+          <input type="text" name="faculty_id" placeholder="Faculty ID" required>
+
+          <select name="location" required>
+            <option disabled selected>Select Location</option>
+            {% for location in area_list %}
+              <option value="{{ location }}">{{ location }}</option>
+            {% endfor %}
+          </select>
+
+          <select name="zone" required>
+            <option disabled selected>Select Zone</option>
+            {% for zone in zone_list %}
+              <option value="{{ zone }}">{{ zone }}</option>
+            {% endfor %}
+          </select>
+
+          <input type="number" name="max_load" value="48">
+          <input type="number" name="actual_load" placeholder="Actual Load" min="0" required>
+
+          <div class="button-group">
+            <button name="action" value="create">Create</button>
+            <button name="action" value="delete">Delete</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="courses-block" class="card content-block" style="display: none;">
+        <h2>Courses Management</h2>
+        <form method="post" action="{{ url_for('submit_course') }}">
+          <div id="course-block-container">
+            <div class="course-block">
+              <select name="course_name[]" required>
+                <option disabled selected>Course</option>
+                {% for b in ["Foundation BASIC", "Foundation ADVANCED", "Foundation ADVANCED PLUS",
+                             "Foundation Accelerated", "Foundation SUMMER", "Pre-Foundation Basic",
+                             "Pre-Foundation Advanced", "Pre-Foundation SUMMER"]|sort %}
+                  <option>{{ b }}</option>
+                {% endfor %}
+              </select>
+
+              <select name="subject[]" required>
+                <option disabled selected>Subject</option>
+                <option>Physics</option>
+                <option>Chemistry</option>
+                <option>Mathematics</option>
+                <option>Logic</option>
+                <option>Coding</option>
+                <option>Biology</option>
+              </select>
+
+              <div class="time-slots-container">
+                <div class="time-slot">
+                  <select name="day[]" required>
+                    <option disabled selected>Day</option>
+                    {% for d in day_list %}
+                      <option>{{ d }}</option>
+                    {% endfor %}
+                  </select>
+
+                  <select name="start_time[]" required>
+                    <option disabled selected>Start Time</option>
+                    {% for time in time_list %}
+                      <option value="{{ time }}">{{ time }}</option>
+                    {% endfor %}
+                  </select>
+
+                  <select name="end_time[]" required>
+                    <option disabled selected>End Time</option>
+                    {% for time in time_list %}
+                      <option value="{{ time }}">{{ time }}</option>
+                    {% endfor %}
+                  </select>
+
+                  <button type="button" class="remove-btn" onclick="removeSlot(this)">Remove</button>
+                </div>
+              </div>
+
+              <button type="button" class="add-slot-btn" onclick="addTimeSlot(this)">Add Another Time Slot</button>
+
+              <select name="mode[]" required>
+                <option disabled selected>Mode</option>
+                <option>OFFLINE</option>
+                <option>ONLINE</option>
+                <option>COMBINE</option>
+              </select>
+
+              <label><strong>Select Faculties:</strong></label>
+              <select name="faculties[0][]" multiple required class="faculty-select faculties-dropdown">
+                {% for fid in all_faculty_ids | sort %}
+                  <option value="{{ fid }}">{{ fid }}</option>
+                {% endfor %}
+              </select>
+
+              <label><strong>Batch:</strong></label>
+              <select name="batch[]" required>
+                <option value="">Select Batch</option>
+                {% for option in Batch_list %}
+                  <option value="{{ option }}">{{ option }}</option>
+                {% endfor %}
+              </select>
+
+              <button type="button" class="remove-course-btn" onclick="removeCourseSlot(this)">Remove</button>
+              <hr>
+            </div>
+          </div>
+
+          <button type="button" onclick="addCourseSlot()">Add Another Course Slot</button>
+
+          <div class="button-group">
+            <input type="hidden" name="form" value="course">
+            <button name="action" value="create">Create</button>
+            <button name="action" value="delete">Delete</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="classroom-block" class="card content-block" style="display: none;">
+        <h2>Classroom Capacity Entry</h2>
+        <form method="POST" action="/submit_capacity" id="capacity-form">
+          <label><strong>Select Location:</strong></label>
+          <select name="location" id="location" required>
+            <option value="" disabled selected>Choose Location</option>
+            {% for loc in ["Aundh", "Camp (Lloyds)", "FC Road", "Hadapsar", "Katraj",
+                           "Kothrud", "PCMC", "Pimple Saudagar", "Viman Nagar", "Solapur", "Navi Mumbai"] %}
+              <option>{{ loc }}</option>
+            {% endfor %}
+          </select>
+
+          <label><strong>Total Classrooms:</strong></label>
+          <select id="num_classrooms" name="num_classrooms" onchange="prepareSingleClassroomEntry()" required>
+            <option value="" disabled selected>Select</option>
+            {% for i in range(1, 21) %}
+              <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+          </select>
+
+          <div id="single-classroom-entry"></div>
+
+          <input type="hidden" id="current_index" value="0">
+          <br>
+          <button type="button" onclick="prevClassroom()">Previous</button>
+          <button type="button" onclick="nextClassroom()">Next</button>
+
+          <input type="hidden" name="classroom_name" id="delete_classroom_name">
+          <input type="hidden" name="classroom_day" id="delete_classroom_day">
+          <input type="hidden" name="start_time" id="delete_start_time">
+          <input type="hidden" name="end_time" id="delete_end_time">
+
+          <div class="button-group">
+            <input type="hidden" name="form" value="capacity">
+            <button name="action" value="create">Create</button>
+            <button name="action" value="delete">Delete</button>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script>
+    const dayList = {{ day_list | tojson }};
+    const timeList = {{ time_list | tojson }};
+
+    // Tab switching logic
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        // Remove active class from all
+        document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
+        this.classList.add('active');
+
+        // Hide all content blocks
+        document.querySelectorAll('.content-block').forEach(block => {
+          block.style.display = 'none';
+        });
+
+        // Show the targeted block
+        const target = this.getAttribute('data-target');
+        const targetSection = document.getElementById(target);
+        if (targetSection) {
+          targetSection.style.display = 'block';
+        }
+      });
+    });
+
+
+  </script>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
