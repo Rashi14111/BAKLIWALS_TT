@@ -1,31 +1,23 @@
-from flask import Flask, render_template, request, redirect, session, url_for, flash
+from flask import Flask, render_template, request, redirect
 import pandas as pd
 import os
 import openpyxl
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font
+from flask import session, url_for, flash
 import gspread
-import json
-import base64
 
 from oauth2client.service_account import ServiceAccountCredentials
 from gspread_dataframe import get_as_dataframe, set_with_dataframe
 
 app = Flask(__name__)
+
 app.secret_key = '563596d88700bb183fbd9bc6b87c37ca'  # Needed for session management
 
-GOOGLE_SHEET_ID = "1rPlfvW1V11Uevbe6KKpADvyI5HxFsfxISh9aQ9cxv_c"
+GOOGLE_SHEET_ID = "1rPlfvW1V11Uevbe6KKpADvyI5HxFsfxISh9aQ9cxv_c"  # ⬅️ your sheet ID
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# Decode base64 credentials from environment variable
-creds_b64 = os.getenv("GOOGLE_CREDS_B64")  # Set this in Render as environment variable
-if not creds_b64:
-    raise Exception("Environment variable GOOGLE_CREDS_B64 not set")
-
-creds_json = base64.b64decode(creds_b64).decode("utf-8")
-creds_dict = json.loads(creds_json)
-
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", SCOPE)
 client = gspread.authorize(creds)
 
 
@@ -602,44 +594,60 @@ def submit_capacity():
             df.columns = [c.strip() for c in df.columns]
 
         # ── 3. Action handling ───────────────────────────────────────────────
+                # ── 3. Action handling ───────────────────────────────────────────────
         if action == "delete":
-           classroom = request.form.get("classroom_name")
-           day = request.form.get("classroom_day")
-           start = request.form.get("start_time")
-           end = request.form.get("end_time")
+            location = request.form.get("location")
+            classroom = request.form.get("classroom_name")
+            day = request.form.get("classroom_day")
+            start = request.form.get("start_time")
+            end = request.form.get("end_time")
 
-           if not (location and classroom and day and start and end):
-              return "Missing information for delete action", 400
+            if not (location and classroom and day and start and end):
+                return "❌ Missing information for delete action", 400
 
-           day_time = f"{day} - {start} to {end}"
+    # Prepare comparison string
+            day_time = f"{day} - {start} to {end}"
 
-           df = df[~(
-                (df["Location"] == location) &
-                (df["Classroom"] == classroom) &
-                (df["Day_Time"] == day_time)
-            )]
+    # Normalize classroom name format
+            if not classroom.strip().lower().startswith("classroom"):
+                classroom = f"Classroom {classroom.strip()}"
 
+    # Log what you're trying to delete
+            print("🟠 Trying to delete row with:")
+            print("Location:", location)
+            print("Classroom:", classroom)
+            print("Day_Time:", day_time)
+            print("📄 Current DataFrame (top rows):")
+            print(df[["Location", "Classroom", "Day_Time"]].head().to_string())
 
+    # Perform deletion using normalized string comparison
+            mask = ~(
+                (df["Location"].str.strip().str.lower() == location.strip().lower()) &
+                (df["Classroom"].str.strip().str.lower() == classroom.strip().lower()) &
+                (df["Day_Time"].str.strip().str.lower() == day_time.strip().lower())
+            )
+
+            rows_before = len(df)
+            df = df[mask]
+            rows_after = len(df)
+            print(f"✅ Rows before: {rows_before}, after deletion: {rows_after}")
         
-
+        
         else:
-             # ── Creation / Update logic ─────────────────────────────────────
+            # ── Creation / Update logic ─────────────────────────────────────
             if not all(len(lst) == len(classroom_names) for lst in
                        [seating_caps, ownerships, students, classroom_days, start_times, end_times]):
                 return "Form data is incomplete or inconsistent", 400
-            
-            
-            
-            
+
             for i in range(len(classroom_names)):
                 if classroom_names[i].strip() and classroom_days[i] and start_times[i] and end_times[i]:
                     day_time = f"{classroom_days[i]} - {start_times[i]} to {end_times[i]}"
-                    
+
                     # Remove existing rows that match classroom + time + location
                     df = df[~(
-                        (df["Classroom"] == classroom_names[i]) &
-                        (df["Day_Time"] == day_time) &
-                        (df["Location"] == location)
+                        (df["Classroom"].str.strip().str.lower() == classroom_names[i].strip().lower()) &
+                        (df["Day_Time"].str.strip().str.lower() == day_time.strip().lower()) &
+                        (df["Location"].str.strip().str.lower() == location.strip().lower())
                     )]
 
                     new_row = {
@@ -681,4 +689,5 @@ app.run(host="0.0.0.0", port=port)
 
 
  
+
 
