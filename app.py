@@ -16,7 +16,7 @@ GOOGLE_SHEET_ID = "1rPlfvW1V11Uevbe6KKpADvyI5HxFsfxISh9aQ9cxv_c"
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 # 🔁 Get base64 string from env variable
-base64_creds = os.getenv("GOOGLE_CREDS_BASE64")
+base64_creds = os.getenv("GOOGLE_CREDS_B64")
 
 if not base64_creds:
     raise ValueError("❌ Missing GOOGLE_CREDS_BASE64 environment variable")
@@ -697,6 +697,7 @@ app.run(host="0.0.0.0", port=port)
 
 
  
+
 
 
 
