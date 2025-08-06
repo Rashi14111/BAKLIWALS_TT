@@ -1,24 +1,32 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, session, url_for, flash
 import pandas as pd
 import os
-import openpyxl
-from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Font
-from flask import session, url_for, flash
+import json
 import gspread
+import base64
 
-from oauth2client.service_account import ServiceAccountCredentials
 from gspread_dataframe import get_as_dataframe, set_with_dataframe
+from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
+app.secret_key = '563596d88700bb183fbd9bc6b87c37ca'  # For session management
 
-app.secret_key = '563596d88700bb183fbd9bc6b87c37ca'  # Needed for session management
-
-GOOGLE_SHEET_ID = "1rPlfvW1V11Uevbe6KKpADvyI5HxFsfxISh9aQ9cxv_c"  # ⬅️ your sheet ID
+# 🔐 Google Sheet Config
+GOOGLE_SHEET_ID = "1rPlfvW1V11Uevbe6KKpADvyI5HxFsfxISh9aQ9cxv_c"
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", SCOPE)
+# 🔁 Get base64 string from env variable
+base64_creds = os.getenv("GOOGLE_CREDS_BASE64")
+
+if not base64_creds:
+    raise ValueError("❌ Missing GOOGLE_CREDS_BASE64 environment variable")
+
+# ✅ Decode and load credentials from base64
+creds_json = json.loads(base64.b64decode(base64_creds))
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, SCOPE)
 client = gspread.authorize(creds)
+
+# ✅ Now you can use `client.open_by_key(GOOGLE_SHEET_ID)` etc. in your routes
 
 
 FACULTY_SHEET = 'faculty'
@@ -689,5 +697,6 @@ app.run(host="0.0.0.0", port=port)
 
 
  
+
 
 
